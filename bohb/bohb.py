@@ -91,8 +91,9 @@ class BOHB:
                 if hyperparameter.value['index'] == -1:
                     value = hyperparameter.value['value']
                     bw = bw * self.bw_factor
+                    # https://github.com/automl/HpBandSter/blob/841db4b827f342e5eb7f725723ea6461ac52d45a/hpbandster/optimizers/config_generators/bohb.py#L156
                     hyperparameter.value['value'] = scipy.stats.truncnorm.rvs(
-                        -value/bw,(1-m)/bw, loc=value, scale=bw)
+                        -value/bw,(1-value)/bw, loc=value, scale=bw)
                 else:
                     if np.random.rand() >= (1-bw):
                         hp = self.configspace.hyperparameter_map[hyperparameter.name]
