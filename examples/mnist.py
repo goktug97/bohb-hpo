@@ -126,4 +126,4 @@ def evaluate(params, budget):
 
 opt = BOHB(configspace, evaluate, max_budget=40, min_budget=5)
 best = opt.optimize()
-print(f'Best Configuration: {best}')
+print(f'Best Configuration:\n {best}')

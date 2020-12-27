@@ -8,7 +8,7 @@ with open(os.path.join(directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='BOHB_HPO',
-      version=f'0.0.3',
+      version=f'0.0.4',
       description='Bayesian Optimization Hyperband Hyperparameter Optimization',
       author='Göktuğ Karakaşlı',
       author_email='karakasligk@gmail.com',
@@ -22,4 +22,8 @@ setup(name='BOHB_HPO',
           "License :: OSI Approved :: MIT License"
       ],
       python_requires='>=3.7',
+      install_requires=[
+          'numpy',
+          'scipy',
+          'statsmodels'],
       include_package_data=True)
