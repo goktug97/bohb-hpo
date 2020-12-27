@@ -22,6 +22,9 @@ class Configuration:
                 array.append(hyperparameter.value['index'])
         return array
 
+    def __getitem__(self, idx):
+        return self.hyperparameters[idx]
+
     def __str__(self):
         string = ["Configuration:\n"]
         for hyperparameter in self.hyperparameters:
@@ -40,8 +43,11 @@ class ConfigurationSpace:
     def __init__(self, hyperparameters, seed=None):
         self.hyperparameters = hyperparameters
         self.rng = np.random.default_rng(seed)
-        self.kde_vartypes = ''.join(
-            [hyperparameter.vartype for hyperparameter in self.hyperparameters])
+        self.kde_vartypes = ''
+        self.hyperparameter_map = {}
+        for hyperparameter in self.hyperparameters:
+            self.kde_vartypes += hyperparameter.vartype
+            self.hyperparameter_map[hyperparameter.name] = hyperparameter
 
     def sample_configuration(self):
         hyperparameters = []
