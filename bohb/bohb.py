@@ -10,11 +10,13 @@ import bohb.configspace as cs
 
 
 class BOHB:
-    def __init__(self, configspace, evaluate, resource, eta=3, best_percent = 0.15,
+    def __init__(self, configspace, evaluate, max_budget, min_budget,
+                 eta=3, best_percent = 0.15,
                  random_percent = 1/3, n_samples = 64, bw_factor=3, min_bandwidth=1e-3):
         self.eta = eta
         self.configspace = configspace
-        self.resource = resource
+        self.max_budget = max_budget
+        self.min_budget = min_budget
         self.evaluate = evaluate
 
         self.best_percent = best_percent
@@ -23,8 +25,8 @@ class BOHB:
         self.min_bandwidth = min_bandwidth
         self.bw_factor = bw_factor
 
-        self.s_max = int(math.log(self.resource, self.eta))
-        self.budget = (self.s_max + 1) * self.resource
+        self.s_max = int(math.log(self.max_budget/self.min_budget, self.eta))
+        self.budget = (self.s_max + 1) * self.max_budget
 
         self.kde_good = None
         self.kde_bad = None
@@ -34,10 +36,11 @@ class BOHB:
         min_loss = np.inf
         for s in reversed(range(self.s_max + 1)):
             n = int(math.ceil(
-                (self.budget * (self.eta ** s)) / (self.resource * (s + 1))))
-            r = self.resource * (self.eta ** -s)
+                (self.budget * (self.eta ** s)) / (self.max_budget * (s + 1))))
+            r = self.max_budget * (self.eta ** -s)
             self.kde_good = None
             self.kde_bad = None
+            self.samples = np.array([])
             for i in range(s+1):
                 n_i = n * self.eta ** ( -i ) # Number of configs
                 r_i = r * self.eta ** ( i ) # Budget
@@ -64,6 +67,10 @@ class BOHB:
                         good_data, self.configspace.kde_vartypes)
                     self.kde_bad = KDEMultivariate(
                         bad_data, self.configspace.kde_vartypes)
+                    self.kde_bad.kde.bw = np.clip(
+                        self.kde_bad.kde.bw, self.min_bandwidth,None)
+                    self.kde_good.kde.bw = np.clip(
+                        self.kde_good.kde.bw, self.min_bandwidth,None)
         return best_hyperparameter
 
     def get_sample(self):
