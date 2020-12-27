@@ -13,10 +13,19 @@ class Configuration:
             config[hyperparameter.name] = hyperparameter.value['value']
         return config
 
+    def to_list(self):
+        array = []
+        for hyperparameter in self.hyperparameters:
+            if hyperparameter.value['index'] == -1:
+                array.append(hyperparameter.value['value'])
+            else:
+                array.append(hyperparameter.value['index'])
+        return array
+
     def __str__(self):
         string = ["Configuration:\n"]
         for hyperparameter in self.hyperparameters:
-            string.append((f'{"Name:":>8} {hyperparameter.name: <{self.max_length}}, '
+            string.append((f'{"Name:":>8} {hyperparameter.name: <{self.max_length}} | '
                            f"Value: {hyperparameter.value['value']}\n").ljust(10))
         return ''.join(string)
 
@@ -31,6 +40,8 @@ class ConfigurationSpace:
     def __init__(self, hyperparameters, seed=None):
         self.hyperparameters = hyperparameters
         self.rng = np.random.default_rng(seed)
+        self.kde_vartypes = ''.join(
+            [hyperparameter.vartype for hyperparameter in self.hyperparameters])
 
     def sample_configuration(self):
         hyperparameters = []
@@ -39,6 +50,9 @@ class ConfigurationSpace:
             hyperparameters.append(
                 Hyperparameter(hyperparameter.name, value))
         return Configuration(hyperparameters)
+
+    def __len__(self):
+        return len(self.hyperparameters)
 
 
 class UniformHyperparameter(Hyperparameter):
@@ -49,6 +63,7 @@ class UniformHyperparameter(Hyperparameter):
         self.lower = lower
         self.upper = upper
         self.integer = integer
+        self.vartype = 'c'
 
     def sample(self, rng):
         func = rng.integers if self.integer else rng.uniform
@@ -60,13 +75,8 @@ class CategoricalHyperparameter(Hyperparameter):
     def __init__(self, name, choices):
         super().__init__(name, choices[0])
         self.choices = choices
+        self.vartype = 'o'
 
     def sample(self, rng):
         index = rng.integers(0, len(self.choices))
         return {'index': index, 'value': self.choices[index]}
-
-a = UniformHyperparameter('hidden_size', 0, 100, True)
-b = UniformHyperparameter('hidden', 0, 10, True)
-cs = ConfigurationSpace([a, b], 123)
-config = cs.sample_configuration()
-print(config.hyperparameters[0].value['index'])
