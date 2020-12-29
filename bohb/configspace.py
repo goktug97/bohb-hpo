@@ -111,7 +111,7 @@ class UniformHyperparameter(Hyperparameter):
         super().__init__(name, (lower + upper) / 2)
 
     def sample(self, rng):
-        func = scipy.stats.loguniform.rvs if self.log
+        func = (scipy.stats.loguniform.rvs if self.log
                 else rng.uniform)
         value = func(self.lower, self.upper)
         return self.new(value)
