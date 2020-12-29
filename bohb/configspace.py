@@ -59,8 +59,9 @@ class Hyperparameter(ABC):
             new_hyperparameter.value = value
         return new_hyperparameter
 
+    @abstractmethod
     def sample(self):
-        raise NotImplementedError
+        ...
 
     @property
     @abstractmethod

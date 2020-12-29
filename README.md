@@ -22,6 +22,8 @@ See [examples](https://github.com/goktug97/bohb-hpo/tree/master/examples)
     - Conditional Parameters
     - Parallel Optimization (Implemented but not working properly)
     - Better Logging
+    - More Hyperparameters
+    - Easier Example
 
 ## License
 bohb-hpo is licensed under the MIT License.
