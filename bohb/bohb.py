@@ -90,7 +90,7 @@ class BOHB:
                     losses = []
                     for j in range(n):
                         sample = self.get_sample()
-                        loss = self.evaluate(sample.to_dict(), r_i)
+                        loss = self.evaluate(sample.to_dict(), int(r_i))
                         samples.append(sample)
                         losses.append(loss)
                         if loss < min_loss:
