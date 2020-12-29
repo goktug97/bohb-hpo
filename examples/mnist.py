@@ -1,3 +1,9 @@
+import requests
+import os
+import hashlib
+import tempfile
+import gzip
+
 import torch
 import numpy as np
 
@@ -9,7 +15,6 @@ SEED = 123
 
 # https://github.com/geohot/tinygrad/blob/master/extra/utils.py
 def fetch(url):
-    import requests, os, hashlib, tempfile
     fp = os.path.join(tempfile.gettempdir(),
                       hashlib.md5(url.encode('utf-8')).hexdigest())
     if os.path.isfile(fp) and os.stat(fp).st_size > 0:
@@ -24,20 +29,22 @@ def fetch(url):
     return dat
 
 
+def parse_mnist(data):
+    return np.frombuffer(gzip.decompress(data), dtype=np.uint8).copy()
+
+
 def fetch_mnist():
-    import gzip
-    parse = lambda dat: np.frombuffer(gzip.decompress(dat), dtype=np.uint8).copy()
-    X = parse(fetch(
-        "http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz"))[0x10:].reshape((
-            -1, 28, 28))
-    Y = parse(fetch(
+    X = parse_mnist(
+        fetch("http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz")
+    )[0x10:].reshape((-1, 28, 28))
+    Y = parse_mnist(fetch(
         "http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz"))[8:]
     idx = np.arange(0, 2048+128)
     np.random.shuffle(idx)
     X_train = X[idx[:2048]].reshape(-1, 28*28)
     Y_train = Y[idx[:2048]]
-    X_test  = X[idx[2048:]].reshape(-1, 28*28)
-    Y_test  = Y[idx[2048:]]
+    X_test = X[idx[2048:]].reshape(-1, 28*28)
+    Y_test = Y[idx[2048:]]
     return X_train, Y_train, X_test, Y_test
 
 
@@ -63,12 +70,11 @@ class MNIST(torch.nn.Module):
 def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
                 activation, weight_decay,
                 x_train, y_train, x_test, y_test):
-    torch.manual_seed(SEED)
-    np.random.seed(SEED)
-    x_train = torch.from_numpy(x_train).cpu().float()
-    y_train = torch.from_numpy(y_train).cpu().long()
-    x_test = torch.from_numpy(x_test).cpu().float()
-    y_test = torch.from_numpy(y_test).cpu().long()
+    # torch.manual_seed(SEED)
+    x_train = torch.from_numpy(x_train.copy()).cpu().float()
+    y_train = torch.from_numpy(y_train.copy()).cpu().long()
+    x_test = torch.from_numpy(x_test.copy()).cpu().float()
+    y_test = torch.from_numpy(y_test.copy()).cpu().long()
     model = MNIST(hidden_size, activation)
 
     if optimizer == 'adam':
@@ -83,16 +89,18 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
     else:
         raise NotImplementedError
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=n_epochs)
 
     loss_fn = torch.nn.CrossEntropyLoss()
 
     for epoch in range(int(n_epochs)):
         for batch_idx in range(len(x_train) // batch_size):
-            batch = x_train[batch_idx * batch_size:(batch_idx + 1) * batch_size]
+            batch = x_train[
+                batch_idx * batch_size:(batch_idx + 1) * batch_size]
             output = model(batch)
-            loss = loss_fn(
-                output, y_train[batch_idx * batch_size:(batch_idx + 1) * batch_size])
+            loss = loss_fn(output, y_train[
+                batch_idx * batch_size:(batch_idx + 1) * batch_size])
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -105,25 +113,28 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
             scheduler.step()
     return loss
 
+if __name__ == '__main__':
+    np.random.seed(SEED)
+    x_train, y_train, x_test, y_test = fetch_mnist()
 
-np.random.seed(SEED)
-x_train, y_train, x_test, y_test = fetch_mnist()
 
-batch_size = cs.CategoricalHyperparameter('batch_size', [8, 16, 32])
-optimizer = cs.CategoricalHyperparameter('optimizer', ['adam', 'sgd', 'rms'])
-hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
-scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
-activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
-weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3)
+    def evaluate(params, budget):
+        loss = train_mnist(**params, x_train=x_train, y_train=y_train,
+                           x_test=x_test, y_test=y_test, n_epochs=budget)
+        return loss
 
-configspace = cs.ConfigurationSpace([batch_size, optimizer, hidden_size,
-                                     scheduler_p, activation, weight_decay], seed=SEED)
 
-def evaluate(params, budget):
-    loss = train_mnist(**params, x_train=x_train, y_train=y_train,
-                       x_test=x_test, y_test=y_test, n_epochs=budget)
-    return loss
+    batch_size = cs.CategoricalHyperparameter('batch_size', [8, 16, 32])
+    optimizer = cs.CategoricalHyperparameter('optimizer', ['adam', 'sgd', 'rms'])
+    hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
+    scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
+    activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
+    weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3)
 
-opt = BOHB(configspace, evaluate, max_budget=40, min_budget=5)
-best = opt.optimize()
-print(f'Best Configuration:\n {best}')
+    configspace = cs.ConfigurationSpace([batch_size, optimizer, hidden_size,
+                                         scheduler_p, activation, weight_decay],
+                                        seed=SEED)
+
+    opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
+    best = opt.optimize()
+    print(f'Best Configuration:\n {best}')

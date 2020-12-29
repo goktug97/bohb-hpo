@@ -20,7 +20,8 @@ See [examples](https://github.com/goktug97/bohb-hpo/tree/master/examples)
 
 ## TODO
     - Conditional Parameters
-    - Parallel Optimization
+    - Parallel Optimization (Implemented but not working properly)
+    - Better Logging
 
 ## License
 bohb-hpo is licensed under the MIT License.
