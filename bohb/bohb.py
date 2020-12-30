@@ -116,12 +116,7 @@ class BOHB:
 
     def get_sample(self):
         if self.kde_good is None or np.random.random() < self.random_percent:
-            if self.samples.size:
-                # Return a random successful sample from the previous budget
-                return np.random.choice(self.samples)
-            else:
-                # Return a random configuration as there is no sample to choose from
-                return self.configspace.sample_configuration()
+            return self.configspace.sample_configuration()
 
         # Sample from the good data
         for _ in range(self.n_samples):

@@ -111,7 +111,7 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
         print(f"epoch: {epoch}, validation loss:{loss:.5f}, accuracy:{acc}")
         if scheduler_p:
             scheduler.step()
-    return loss
+    return loss.item()
 
 if __name__ == '__main__':
     np.random.seed(SEED)
