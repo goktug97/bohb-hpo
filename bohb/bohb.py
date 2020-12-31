@@ -119,9 +119,9 @@ class BOHB:
             return self.configspace.sample_configuration()
 
         # Sample from the good data
+        best_tpe_val = np.inf
         for _ in range(self.n_samples):
             idx = np.random.randint(0, len(self.kde_good.configurations))
-            best_tpe_val = np.inf
             configuration = copy.deepcopy(self.kde_good.configurations[idx])
             for hyperparameter, bw in zip(configuration, self.kde_good.bw):
                 if hyperparameter.type == cs.Type.Continuous:
