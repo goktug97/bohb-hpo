@@ -106,10 +106,12 @@ class ConfigurationSpace:
 class UniformHyperparameter(Hyperparameter):
     def __init__(self, name, lower, upper, log=False):
         self.type = Type.Continuous
+        self._lower = lower
+        self._upper = lower
         self.lower = np.log(lower) if log else lower
         self.upper = np.log(upper) if log else upper
         self.log = log
-        value = (lower + upper) / 2
+        value = (self.lower + self.upper) / 2
         super().__init__(name, np.exp(value) if log else value)
 
     def sample(self, rng):
@@ -122,10 +124,7 @@ class UniformHyperparameter(Hyperparameter):
 
     @value.setter
     def value(self, value):
-        if not self.log:
-            self._value = min(max(self.lower, value), self.upper)
-        else:
-            self._value = value
+        self._value = min(max(self._lower, value), self._upper)
 
 
 class IntegerUniformHyperparameter(UniformHyperparameter):
@@ -138,7 +137,7 @@ class IntegerUniformHyperparameter(UniformHyperparameter):
 
     @value.setter
     def value(self, value):
-        self._value = int(min(max(self.lower, value), self.upper))
+        self._value = int(min(max(self._lower, value), self._upper))
 
 
 class CategoricalHyperparameter(Hyperparameter):
