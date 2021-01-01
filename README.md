@@ -36,7 +36,7 @@ alpha = cs.CategoricalHyperparameter('alpha', [0.001, 0.01, 0.1])
 beta = cs.CategoricalHyperparameter('beta', [1, 2, 3])
 configspace = cs.ConfigurationSpace([alpha, beta], seed=123)
 
-opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
+opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1)
 best = opt.optimize()
 ```
 

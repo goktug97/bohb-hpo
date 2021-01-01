@@ -68,7 +68,7 @@ class MNIST(torch.nn.Module):
 
 
 def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
-                activation, weight_decay,
+                activation, weight_decay, lr,
                 x_train, y_train, x_test, y_test):
     # torch.manual_seed(SEED)
     x_train = torch.from_numpy(x_train.copy()).cpu().float()
@@ -79,13 +79,13 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
 
     if optimizer == 'adam':
         optimizer = torch.optim.Adam(model.parameters(),
-                                     weight_decay=weight_decay, lr=0.001)
+                                     weight_decay=weight_decay, lr=lr)
     elif optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(),
-                                    weight_decay=weight_decay, lr=0.001)
+                                    weight_decay=weight_decay, lr=lr)
     elif optimizer == 'rms':
         optimizer = torch.optim.RMSprop(model.parameters(),
-                                        weight_decay=weight_decay, lr=0.01)
+                                        weight_decay=weight_decay, lr=lr)
     else:
         raise NotImplementedError
 
@@ -128,11 +128,13 @@ if __name__ == '__main__':
     optimizer = cs.CategoricalHyperparameter('optimizer', ['adam', 'sgd', 'rms'])
     hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
     scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
+    learning_rate = cs.UniformHyperparameter('lr', 0.1, 1e-4, log=True)
     activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
     weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3)
 
     configspace = cs.ConfigurationSpace([batch_size, optimizer, hidden_size,
-                                         scheduler_p, activation, weight_decay],
+                                         scheduler_p, activation, weight_decay,
+                                         learning_rate],
                                         seed=SEED)
 
     opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
