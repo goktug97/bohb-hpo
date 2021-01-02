@@ -3,23 +3,9 @@ import copy
 import numpy as np
 import scipy
 import statsmodels.api as sm
-try:
-    import ray
-    ray_available = True
-except ModuleNotFoundError:
-    class ray:
-        @staticmethod
-        def remote(func):
-            return func
-    ray_available = False
 
 import bohb.configspace as cs
-
-
-@ray.remote
-def _evaluate(evaluate, r_i, sample):
-    loss = evaluate(sample.to_dict(), r_i)
-    return loss
+import dask
 
 
 class KDEMultivariate(sm.nonparametric.KDEMultivariate):
@@ -63,7 +49,7 @@ class Log():
 class BOHB:
     def __init__(self, configspace, evaluate, max_budget, min_budget,
                  eta=3, best_percent=0.15, random_percent=1/3, n_samples=64,
-                 bw_factor=3, min_bandwidth=1e-3, enable_ray=False):
+                 bw_factor=3, min_bandwidth=1e-3, n_proc=1):
         self.eta = eta
         self.configspace = configspace
         self.max_budget = max_budget
@@ -75,7 +61,7 @@ class BOHB:
         self.n_samples = n_samples
         self.min_bandwidth = min_bandwidth
         self.bw_factor = bw_factor
-        self.enable_ray = enable_ray
+        self.n_proc = n_proc
 
         self.s_max = int(np.log(self.max_budget/self.min_budget) / np.log(self.eta))
         self.budget = (self.s_max + 1) * self.max_budget
@@ -83,9 +69,6 @@ class BOHB:
         self.kde_good = None
         self.kde_bad = None
         self.samples = np.array([])
-
-        if ray_available and enable_ray:
-            ray.init()
 
     def optimize(self):
         logs = Log(self.s_max+1)
@@ -102,27 +85,22 @@ class BOHB:
                 r_i = r * self.eta ** (i)  # Budget
                 logs[s][r_i] = {'loss': np.inf}
 
-                # TODO: Not working?
-                if ray_available and self.enable_ray:
-                    samples = [self.get_sample() for _ in range(n)]
-                    results = [_evaluate.remote(self.evaluate, r_i, sample)
-                               for sample in samples]
-                    losses = ray.get(results)
-                    loss_idx = np.argmin(losses)
-                    if losses[loss_idx] < logs[s][r_i]['loss']:
-                        logs[s][r_i]['loss'] = losses[loss_idx]
-                        logs[s][r_i]['hyperparameter'] = samples[loss_idx]
-                else:
-                    samples = []
-                    losses = []
-                    for j in range(n):
-                        sample = self.get_sample()
+                samples = []
+                losses = []
+                for j in range(n):
+                    sample = self.get_sample()
+                    if self.n_proc > 1:
+                        loss = dask.delayed(self.evaluate)(sample.to_dict(), int(r_i))
+                    else:
                         loss = self.evaluate(sample.to_dict(), int(r_i))
-                        samples.append(sample)
-                        losses.append(loss)
-                        if loss < logs[s][r_i]['loss']:
-                            logs[s][r_i]['loss'] = loss
-                            logs[s][r_i]['hyperparameter'] = sample
+                    samples.append(sample)
+                    losses.append(loss)
+                if self.n_proc > 1:
+                    losses = dask.compute(
+                        *losses, scheduler='processes', num_workers=self.n_proc)
+                midx = np.argmin(losses)
+                logs[s][r_i]['loss'] = losses[midx]
+                logs[s][r_i]['hyperparameter'] = samples[midx]
 
                 if logs[s][r_i]['loss'] < logs.best['loss']:
                     logs.best['loss'] = logs[s][r_i]['loss']

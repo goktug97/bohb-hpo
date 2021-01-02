@@ -7,6 +7,7 @@ Implementation for [BOHB](http://proceedings.mlr.press/v80/falkner18a.html)
     - numpy
     - scipy
     - statsmodels
+    - dask
     - torch (example)
 
 ## Installation
@@ -32,12 +33,17 @@ def evaluate(params, n_iterations):
     return loss/n_iterations
 
 
-alpha = cs.CategoricalHyperparameter('alpha', [0.001, 0.01, 0.1])
-beta = cs.CategoricalHyperparameter('beta', [1, 2, 3])
-configspace = cs.ConfigurationSpace([alpha, beta], seed=123)
+if __name__ == '__main__':
+    alpha = cs.CategoricalHyperparameter('alpha', [0.001, 0.01, 0.1])
+    beta = cs.CategoricalHyperparameter('beta', [1, 2, 3])
+    configspace = cs.ConfigurationSpace([alpha, beta])
 
-opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1)
-logs = opt.optimize()
+    opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1)
+
+    # Parallel
+    # opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1, n_proc=4)
+
+    logs = opt.optimize()
 ```
 
 See [examples](https://github.com/goktug97/bohb-hpo/tree/master/examples)
@@ -75,7 +81,6 @@ configspace = cs.ConfigurationSpace([a, b1, b2, c1, c2, d1, d2], seed=123)
 ```
 
 ## TODO
-    - Parallel Optimization (Implemented but not working properly)
     - More Hyperparameters
 
 ## License

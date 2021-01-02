@@ -150,6 +150,6 @@ if __name__ == '__main__':
                                          regularization_p, momentum, learning_rate],
                                         seed=SEED)
 
-    opt = BOHB(configspace, evaluate, max_budget=81, min_budget=1)
+    opt = BOHB(configspace, evaluate, max_budget=81, min_budget=1, n_proc=2)
     logs = opt.optimize()
     print(logs)
