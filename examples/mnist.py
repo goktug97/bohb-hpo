@@ -134,7 +134,7 @@ if __name__ == '__main__':
                                         (optimizer=='sgd') | (optimizer=='rms'))
     hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
     scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
-    learning_rate = cs.UniformHyperparameter('lr', 0.01, 1e-4, log=True)
+    learning_rate = cs.UniformHyperparameter('lr', 1e-4, 1e-1, log=True)
     activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
     regularization_p = cs.CategoricalHyperparameter('regularization_p',
                                                     [False, True], dont_pass=True)
