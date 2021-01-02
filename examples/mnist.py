@@ -147,5 +147,5 @@ if __name__ == '__main__':
                                         seed=SEED)
 
     opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
-    best = opt.optimize()
-    print(f'Best Configuration:\n {best}')
+    logs = opt.optimize()
+    print(logs)

@@ -8,7 +8,7 @@ with open(os.path.join(directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='BOHB_HPO',
-      version=f'0.1.1',
+      version=f'0.2.0',
       description='Bayesian Optimization Hyperband Hyperparameter Optimization',
       author='Göktuğ Karakaşlı',
       author_email='karakasligk@gmail.com',

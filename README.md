@@ -37,14 +37,13 @@ beta = cs.CategoricalHyperparameter('beta', [1, 2, 3])
 configspace = cs.ConfigurationSpace([alpha, beta], seed=123)
 
 opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1)
-best = opt.optimize()
+logs = opt.optimize()
 ```
 
 See [examples](https://github.com/goktug97/bohb-hpo/tree/master/examples)
 
 ## TODO
     - Parallel Optimization (Implemented but not working properly)
-    - Better Logging
     - More Hyperparameters
 
 ## License

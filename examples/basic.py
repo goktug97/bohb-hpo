@@ -18,5 +18,5 @@ beta = cs.CategoricalHyperparameter('beta', [1, 2, 3])
 configspace = cs.ConfigurationSpace([alpha, beta], seed=123)
 
 opt = BOHB(configspace, evaluate, max_budget=10, min_budget=1)
-best = opt.optimize()
-print(f'Best Configuration:\n {best}')
+logs = opt.optimize()
+print(logs)

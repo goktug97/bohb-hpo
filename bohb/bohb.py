@@ -1,5 +1,3 @@
-import math
-import random
 import copy
 
 import numpy as np
@@ -35,6 +33,34 @@ class KDEMultivariate(sm.nonparametric.KDEMultivariate):
         super().__init__(data, vartypes, 'normal_reference')
 
 
+class Log():
+    def __init__(self, size):
+        self.size = size
+        self.logs = np.empty(self.size, dtype=dict)
+        self.best = {'loss': np.inf}
+
+    def __getitem__(self, index):
+        return self.logs[index]
+
+    def __setitem__(self, index, value):
+        self.logs[index] = value
+
+    def __repr__(self):
+        string = []
+        string.append(f's_max: {self.size}')
+        for s, log in enumerate(self.logs):
+            string.append(f's: {s}')
+            for budget in log:
+                string.append(f'Budget: {budget}')
+                string.append(f'Loss: {log[budget]["loss"]}')
+                string.append(str(log[budget]['hyperparameter']))
+        string.append('Best Hyperparameter Configuration:')
+        string.append(f'Budget: {self.best["budget"]}')
+        string.append(f'Loss: {self.best["loss"]}')
+        string.append(str(self.best['hyperparameter']))
+        return '\n'.join(string)
+
+
 class BOHB:
     def __init__(self, configspace, evaluate, max_budget, min_budget,
                  eta=3, best_percent=0.15, random_percent=1/3, n_samples=64,
@@ -52,7 +78,7 @@ class BOHB:
         self.bw_factor = bw_factor
         self.enable_ray = enable_ray
 
-        self.s_max = int(math.log(self.max_budget/self.min_budget, self.eta))
+        self.s_max = int(np.log(self.max_budget/self.min_budget) / np.log(self.eta))
         self.budget = (self.s_max + 1) * self.max_budget
 
         self.kde_good = None
@@ -63,9 +89,10 @@ class BOHB:
             ray.init()
 
     def optimize(self):
-        min_loss = np.inf
+        logs = Log(self.s_max+1)
         for s in reversed(range(self.s_max + 1)):
-            n = int(math.ceil(
+            logs[s] = {}
+            n = int(np.ceil(
                 (self.budget * (self.eta ** s)) / (self.max_budget * (s + 1))))
             r = self.max_budget * (self.eta ** -s)
             self.kde_good = None
@@ -74,6 +101,7 @@ class BOHB:
             for i in range(s+1):
                 n_i = n * self.eta ** (-i)  # Number of configs
                 r_i = r * self.eta ** (i)  # Budget
+                logs[s][r_i] = {'loss': np.inf}
 
                 # TODO: Not working?
                 if ray_available and self.enable_ray:
@@ -82,9 +110,9 @@ class BOHB:
                                for sample in samples]
                     losses = ray.get(results)
                     loss_idx = np.argmin(losses)
-                    if losses[loss_idx] < min_loss:
-                        min_loss = losses[loss_idx]
-                        best_hyperparameter = samples[loss_idx]
+                    if losses[loss_idx] < logs[s][r_i]['loss']:
+                        logs[s][r_i]['loss'] = losses[loss_idx]
+                        logs[s][r_i]['hyperparameter'] = samples[loss_idx]
                 else:
                     samples = []
                     losses = []
@@ -93,14 +121,19 @@ class BOHB:
                         loss = self.evaluate(sample.to_dict(), int(r_i))
                         samples.append(sample)
                         losses.append(loss)
-                        if loss < min_loss:
-                            min_loss = loss
-                            best_hyperparameter = sample
+                        if loss < logs[s][r_i]['loss']:
+                            logs[s][r_i]['loss'] = loss
+                            logs[s][r_i]['hyperparameter'] = sample
 
-                n = int(n_i//self.eta)
+                if logs[s][r_i]['loss'] < logs.best['loss']:
+                    logs.best['loss'] = logs[s][r_i]['loss']
+                    logs.best['budget'] = r_i
+                    logs.best['hyperparameter'] = logs[s][r_i]['hyperparameter']
+
+                n = int(np.ceil(n_i/self.eta))
                 idxs = np.argsort(losses)
                 self.samples = np.array(samples)[idxs[:n]]
-                n_good = int(math.ceil(self.best_percent * len(samples)))
+                n_good = int(np.ceil(self.best_percent * len(samples)))
                 if n_good > len(self.configspace) + 2:
                     good_data = np.array(samples)[idxs[:n_good]]
                     bad_data = np.array(samples)[idxs[n_good:]]
@@ -112,7 +145,7 @@ class BOHB:
                         self.kde_bad.bw, self.min_bandwidth, None)
                     self.kde_good.bw = np.clip(
                         self.kde_good.bw, self.min_bandwidth, None)
-        return best_hyperparameter
+        return logs
 
     def get_sample(self):
         if self.kde_good is None or np.random.random() < self.random_percent:
