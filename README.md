@@ -42,6 +42,38 @@ logs = opt.optimize()
 
 See [examples](https://github.com/goktug97/bohb-hpo/tree/master/examples)
 
+### Configspace Examples
+
+- Basic
+```python
+import dehb.configspace as cs
+lr = cs.UniformHyperparameter('lr', 1e-4, 1e-1, log=True)
+batch_size = cs.CategoricalHyperparameter('batch_size', [8, 16, 32])
+configspace = cs.ConfigurationSpace([lr, batch_size], seed=123)
+```
+
+- Conditional Parameters
+```python
+import bohb.configspace as cs
+a = cs.IntegerUniformHyperparameter('a', 0, 4)
+b = cs.CategoricalHyperparameter('b', ['a', 'b', 'c'], a == 0)
+b_default = cs.CategoricalHyperparameter('b', ['d'], ~b.cond)
+configspace = cs.ConfigurationSpace([a, b, b_default], seed=123)
+```
+
+- Complex Conditional Parameters
+```python
+import bohb.configspace as cs
+a = cs.IntegerUniformHyperparameter('a', 0, 4)
+b1 = cs.UniformHyperparameter('b', 0, 0.5, a <= 1)
+b2 = cs.UniformHyperparameter('b', 0.5, 1, ~b1.cond)
+c1 = cs.CategoricalHyperparameter('c', ['a', 'b', 'c'], b1 < 0.25)
+c2 = cs.CategoricalHyperparameter('c', ['c', 'd', 'e'], ~c1.cond)
+d1 = cs.UniformHyperparameter('d', 0, 1, (b1 < 0.125) & (c1 == 'b'))
+d2 = cs.UniformHyperparameter('d', 0, 0, ~d1.cond)
+configspace = cs.ConfigurationSpace([a, b1, b2, c1, c2, d1, d2], seed=123)
+```
+
 ## TODO
     - Parallel Optimization (Implemented but not working properly)
     - More Hyperparameters
