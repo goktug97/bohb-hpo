@@ -68,9 +68,10 @@ class MNIST(torch.nn.Module):
 
 
 def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
-                activation, weight_decay, lr,
-                x_train, y_train, x_test, y_test):
-    # torch.manual_seed(SEED)
+                activation, lr,
+                x_train, y_train, x_test, y_test,
+                weight_decay=0.0, momentum=0.0):
+    torch.manual_seed(SEED)
     x_train = torch.from_numpy(x_train.copy()).cpu().float()
     y_train = torch.from_numpy(y_train.copy()).cpu().long()
     x_test = torch.from_numpy(x_test.copy()).cpu().float()
@@ -82,10 +83,12 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
                                      weight_decay=weight_decay, lr=lr)
     elif optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(),
-                                    weight_decay=weight_decay, lr=lr)
+                                    weight_decay=weight_decay, lr=lr,
+                                    momentum=momentum)
     elif optimizer == 'rms':
         optimizer = torch.optim.RMSprop(model.parameters(),
-                                        weight_decay=weight_decay, lr=lr)
+                                        weight_decay=weight_decay, lr=lr,
+                                        momentum=momentum)
     else:
         raise NotImplementedError
 
@@ -113,6 +116,7 @@ def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
             scheduler.step()
     return loss.item()
 
+
 if __name__ == '__main__':
     np.random.seed(SEED)
     x_train, y_train, x_test, y_test = fetch_mnist()
@@ -126,15 +130,20 @@ if __name__ == '__main__':
 
     batch_size = cs.CategoricalHyperparameter('batch_size', [8, 16, 32])
     optimizer = cs.CategoricalHyperparameter('optimizer', ['adam', 'sgd', 'rms'])
+    momentum = cs.UniformHyperparameter('momentum', 0, 1,
+                                        (optimizer=='sgd') | (optimizer=='rms'))
     hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
     scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
-    learning_rate = cs.UniformHyperparameter('lr', 0.1, 1e-4, log=True)
+    learning_rate = cs.UniformHyperparameter('lr', 0.01, 1e-4, log=True)
     activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
-    weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3)
+    regularization_p = cs.CategoricalHyperparameter('regularization_p',
+                                                    [False, True], dont_pass=True)
+    weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3,
+                                            regularization_p == True )
 
     configspace = cs.ConfigurationSpace([batch_size, optimizer, hidden_size,
                                          scheduler_p, activation, weight_decay,
-                                         learning_rate],
+                                         regularization_p, momentum, learning_rate],
                                         seed=SEED)
 
     opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
