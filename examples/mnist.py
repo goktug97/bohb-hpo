@@ -68,9 +68,8 @@ class MNIST(torch.nn.Module):
 
 
 def train_mnist(batch_size, n_epochs, optimizer, hidden_size, scheduler_p,
-                activation, lr,
-                x_train, y_train, x_test, y_test,
-                weight_decay=0.0, momentum=0.0):
+                activation, lr, weight_decay, momentum,
+                x_train, y_train, x_test, y_test):
     torch.manual_seed(SEED)
     x_train = torch.from_numpy(x_train.copy()).cpu().float()
     y_train = torch.from_numpy(y_train.copy()).cpu().long()
