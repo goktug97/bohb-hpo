@@ -130,22 +130,27 @@ if __name__ == '__main__':
 
     batch_size = cs.CategoricalHyperparameter('batch_size', [8, 16, 32])
     optimizer = cs.CategoricalHyperparameter('optimizer', ['adam', 'sgd', 'rms'])
-    momentum = cs.UniformHyperparameter('momentum', 0, 1,
-                                        (optimizer=='sgd') | (optimizer=='rms'))
+    momentum = cs.UniformHyperparameter(
+        'momentum', 0, 1, (optimizer=='sgd') | (optimizer=='rms'))
+    not_momentum = cs.UniformHyperparameter('momentum', 0, 0, ~momentum.cond)
     hidden_size = cs.CategoricalHyperparameter('hidden_size', [16, 32, 64])
     scheduler_p = cs.CategoricalHyperparameter('scheduler_p', [False, True])
     learning_rate = cs.UniformHyperparameter('lr', 1e-4, 1e-1, log=True)
-    activation = cs.CategoricalHyperparameter('activation', ['relu', 'lrelu', 'tanh'])
-    regularization_p = cs.CategoricalHyperparameter('regularization_p',
-                                                    [False, True], dont_pass=True)
-    weight_decay = cs.UniformHyperparameter('weight_decay', 0, 1e-3,
-                                            regularization_p == True )
+    activation = cs.CategoricalHyperparameter(
+        'activation', ['relu', 'lrelu', 'tanh'])
+    regularization_p = cs.CategoricalHyperparameter(
+        'regularization_p', [False, True], dont_pass=True)
+    weight_decay = cs.UniformHyperparameter(
+        'weight_decay', 0, 1e-3, regularization_p == True)
+    not_weight_decay = cs.UniformHyperparameter(
+        'weight_decay', 0, 0, ~weight_decay.cond)
 
     configspace = cs.ConfigurationSpace([batch_size, optimizer, hidden_size,
                                          scheduler_p, activation, weight_decay,
+                                         not_momentum, not_weight_decay,
                                          regularization_p, momentum, learning_rate],
                                         seed=SEED)
 
-    opt = BOHB(configspace, evaluate, max_budget=30, min_budget=1)
+    opt = BOHB(configspace, evaluate, max_budget=81, min_budget=1)
     logs = opt.optimize()
     print(logs)

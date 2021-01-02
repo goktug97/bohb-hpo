@@ -23,14 +23,13 @@ def _evaluate(evaluate, r_i, sample):
 
 
 class KDEMultivariate(sm.nonparametric.KDEMultivariate):
-    def __init__(self, configurations, vartypes):
+    def __init__(self, configurations):
         self.configurations = configurations
-        self.vartypes = vartypes
         data = []
         for config in configurations:
             data.append(np.array(config.to_list()))
         data = np.array(data)
-        super().__init__(data, vartypes, 'normal_reference')
+        super().__init__(data, configurations[0].kde_vartypes, 'normal_reference')
 
 
 class Log():
@@ -134,13 +133,11 @@ class BOHB:
                 idxs = np.argsort(losses)
                 self.samples = np.array(samples)[idxs[:n]]
                 n_good = int(np.ceil(self.best_percent * len(samples)))
-                if n_good > len(self.configspace) + 2:
+                if n_good > len(samples[0].kde_vartypes) + 2:
                     good_data = np.array(samples)[idxs[:n_good]]
                     bad_data = np.array(samples)[idxs[n_good:]]
-                    self.kde_good = KDEMultivariate(
-                        good_data, self.configspace.kde_vartypes)
-                    self.kde_bad = KDEMultivariate(
-                        bad_data, self.configspace.kde_vartypes)
+                    self.kde_good = KDEMultivariate(good_data)
+                    self.kde_bad = KDEMultivariate(bad_data)
                     self.kde_bad.bw = np.clip(
                         self.kde_bad.bw, self.min_bandwidth, None)
                     self.kde_good.bw = np.clip(

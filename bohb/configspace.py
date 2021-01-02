@@ -13,7 +13,11 @@ class Type(Enum):
     Discrete = 'o'
 
 
-class DuplicateHyperparameter(Exception):
+class DuplicateHyperparameterError(Exception):
+    pass
+
+
+class MissingHyperparameterError(Exception):
     pass
 
 
@@ -24,7 +28,10 @@ class Configuration:
         self.hyperparameters = []
         self.hyperparameter_map = {}
         self.max_length = 0
+        self.kde_vartypes = ''
+        names = set()
         for hyperparameter in hyperparameters:
+            names.add(hyperparameter.name)
             length = len(hyperparameter.name)
             if length > self.max_length:
                 self.max_length = length
@@ -32,10 +39,20 @@ class Configuration:
                 if not hyperparameter.cond.compare(self):
                     continue
             if hyperparameter.name in self.hyperparameter_map:
-                raise DuplicateHyperparameter(
+                raise DuplicateHyperparameterError(
                     f'Conflicting Hyperparameter: {hyperparameter.name}')
             self.hyperparameter_map[hyperparameter.name] = hyperparameter
             self.hyperparameters.append(hyperparameter)
+            self.kde_vartypes += hyperparameter.vartype
+
+        missing = names - set(self.hyperparameter_map)
+        if len(missing):
+            raise MissingHyperparameterError(
+                f'Parameters: {missing} are missing. '
+                'Implement the default case if using conditions.\n'
+                'E.g.\nparameter = UniformHyperparameter("paramater", 0, 10, a == b)\n'
+                'not_parameter = UniformHyperparameter("paramater", 0, 0, '
+                '~parameter.cond)')
 
     def to_dict(self):
         config = {}
@@ -167,9 +184,16 @@ class ConfigurationSpace:
     def __init__(self, hyperparameters, seed=None):
         self.hyperparameters = hyperparameters
         self.rng = np.random.default_rng(seed)
-        self.kde_vartypes = ''
+        discrete_map = {}
         for hyperparameter in self.hyperparameters:
-            self.kde_vartypes += hyperparameter.vartype
+            if hyperparameter.type == Type.Discrete:
+                if hyperparameter.name in discrete_map:
+                    m = list(np.unique(discrete_map[hyperparameter.name]._choices +
+                                       hyperparameter.choices))
+                    discrete_map[hyperparameter.name]._choices = m
+                    hyperparameter._choices = m
+                else:
+                    discrete_map[hyperparameter.name] = hyperparameter
 
     def sample_configuration(self):
         hyperparameters = []
@@ -193,6 +217,9 @@ class Condition:
 
     def __or__(self, other):
         return Condition(lambda configs: self.comp(configs) or other.comp(configs))
+
+    def __invert__(self):
+        return Condition(lambda configs: not self.comp(configs))
 
 
 class UniformHyperparameter(Hyperparameter):
@@ -232,33 +259,21 @@ class IntegerUniformHyperparameter(UniformHyperparameter):
         self._value = int(min(max(self._lower, value), self._upper))
 
 
-class ConstantHyperparameter(Hyperparameter):
-    def __init__(self, name, value, cond=None):
-        self.type = Type.Continuous
-        super().__init__(name, value, cond)
-
-    def sample(self, _):
-        return self.new(self.value)
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-
-
 class CategoricalHyperparameter(Hyperparameter):
     def __init__(self, name, choices, cond=None, dont_pass=False):
         self.type = Type.Discrete
         self.index = 0
         self.choices = choices
+        self._choices = choices
         super().__init__(name, self.index, cond, dont_pass)
 
     def sample(self, rng):
         index = rng.integers(0, len(self.choices))
-        return self.new(index)
+        if len(self._choices) == len(self.choices):
+            _index = index
+        else:
+            _index = self._choices.index(self.choices[index])
+        return self.new(_index)
 
     @property
     def value(self):
@@ -267,4 +282,4 @@ class CategoricalHyperparameter(Hyperparameter):
     @value.setter
     def value(self, index):
         self.index = index
-        self._value = self.choices[index]
+        self._value = self._choices[index]
