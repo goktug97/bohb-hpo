@@ -199,7 +199,7 @@ class UniformHyperparameter(Hyperparameter):
     def __init__(self, name, lower, upper, cond=None, log=False, dont_pass=False):
         self.type = Type.Continuous
         self._lower = lower
-        self._upper = lower
+        self._upper = upper
         self.lower = np.log(lower) if log else lower
         self.upper = np.log(upper) if log else upper
         self.log = log
