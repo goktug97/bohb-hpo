@@ -263,7 +263,15 @@ class IntegerNormalHyperparameter(NormalHyperparameter):
         super().__init__(name, mean, sigma, cond, dont_pass)
 
     def sample(self, rng):
-        return self.new(int(round(self.rv.rvs(random_state=rng))))
+        return self.new(self.rv.rvs(random_state=rng))
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = int(round(value))
 
 
 class CategoricalHyperparameter(Hyperparameter):
