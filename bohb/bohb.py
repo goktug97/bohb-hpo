@@ -124,7 +124,13 @@ class BOHB:
 
     def get_sample(self):
         if self.kde_good is None or np.random.random() < self.random_percent:
-            return self.configspace.sample_configuration()
+            if len(self.samples):
+                idx = np.random.randint(0, len(self.samples))
+                sample = self.samples[idx]
+                self.samples = np.delete(self.samples, idx)
+                return sample
+            else:
+                return self.configspace.sample_configuration()
 
         # Sample from the good data
         best_tpe_val = np.inf
