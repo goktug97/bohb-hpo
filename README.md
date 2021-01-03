@@ -76,12 +76,12 @@ b2 = cs.UniformHyperparameter('b', 0.5, 1, ~b1.cond)
 c1 = cs.CategoricalHyperparameter('c', ['a', 'b', 'c'], b1 < 0.25)
 c2 = cs.CategoricalHyperparameter('c', ['c', 'd', 'e'], ~c1.cond)
 d1 = cs.UniformHyperparameter('d', 0, 1, (b1 < 0.125) & (c1 == 'b'))
-d2 = cs.UniformHyperparameter('d', 0, 0, ~d1.cond)
-configspace = cs.ConfigurationSpace([a, b1, b2, c1, c2, d1, d2], seed=123)
+d2 = cs.NormalHyperparameter('d', 0, 0.1, (b1 > 0.125) & (c1 == 'c'))
+d3 = cs.IntegerNormalHyperparameter('d', 5, 10, (b2 > 0.750) & (c2 == 'd'))
+d4 = cs.UniformHyperparameter('d', 0, 0, ~(d1.cond | d2.cond | d3.cond))
+configspace = cs.ConfigurationSpace([a, b1, b2, c1, c2, d1, d2, d3, d4], seed=123)
 ```
 
-## TODO
-    - More Hyperparameters
 
 ## License
 bohb-hpo is licensed under the MIT License.

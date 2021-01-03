@@ -105,16 +105,6 @@ class Hyperparameter(ABC):
         ...
 
     @property
-    @abstractmethod
-    def value(self):
-        ...
-
-    @value.setter
-    @abstractmethod
-    def value(self, value):
-        ...
-
-    @property
     def type(self):
         return self._type
 
@@ -247,16 +237,33 @@ class UniformHyperparameter(Hyperparameter):
 
 
 class IntegerUniformHyperparameter(UniformHyperparameter):
-    def __init__(self, name, lower, upper, cond=None, log=False, dont_pass=False):
-        super().__init__(name, lower, upper, cond, log, dont_pass)
-
     @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
-        self._value = int(min(max(self._lower, value), self._upper))
+        self._value = int(round(min(max(self._lower, value), self._upper)))
+
+
+class NormalHyperparameter(Hyperparameter):
+    def __init__(self, name, mean, sigma, cond=None, dont_pass=False):
+        self.type = Type.Continuous
+        self.mean = mean
+        self.sigma = sigma
+        super().__init__(name, self.mean, cond, dont_pass)
+
+    def sample(self, rng):
+        return self.new(rng.normal(self.mean, self.sigma))
+
+
+class IntegerNormalHyperparameter(NormalHyperparameter):
+    def __init__(self, name, mean, sigma, cond=None, dont_pass=False):
+        self.rv = scipy.stats.truncnorm(a=-sigma, b=sigma, scale=sigma, loc=mean)
+        super().__init__(name, mean, sigma, cond, dont_pass)
+
+    def sample(self, rng):
+        return self.new(int(round(self.rv.rvs(random_state=rng))))
 
 
 class CategoricalHyperparameter(Hyperparameter):
